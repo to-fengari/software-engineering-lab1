@@ -4,7 +4,21 @@ namespace lab3
 	// in its own way while callers keep treating it as a Book.
 	public class Book
 	{
-		public string Title { get; set; } = "";
+		private string _title = "";
+
+		// Validation lives in the setter so an invalid book cannot be built
+		// at all, rather than failing later when something reads it.
+		public string Title
+		{
+			get => _title;
+			set
+			{
+				if (string.IsNullOrWhiteSpace(value))
+					throw new ArgumentException("Title cannot be empty.");
+				_title = value;
+			}
+		}
+
 		public string Author { get; set; } = "";
 
 		public virtual string GetInfo()
@@ -15,7 +29,19 @@ namespace lab3
 
 	public class Magazine : Book
 	{
-		public int IssueNumber { get; set; }
+		private int _issueNumber;
+
+		public int IssueNumber
+		{
+			get => _issueNumber;
+			set
+			{
+				if (value < 0)
+					throw new ArgumentOutOfRangeException(nameof(value),
+						"Issue number cannot be negative.");
+				_issueNumber = value;
+			}
+		}
 
 		public override string GetInfo()
 		{
@@ -37,7 +63,18 @@ namespace lab3
 	// method that displays them.
 	public class Textbook : Book
 	{
-		public string Subject { get; set; } = "";
+		private string _subject = "";
+
+		public string Subject
+		{
+			get => _subject;
+			set
+			{
+				if (string.IsNullOrWhiteSpace(value))
+					throw new ArgumentException("Subject cannot be empty.");
+				_subject = value;
+			}
+		}
 
 		public override string GetInfo()
 		{
