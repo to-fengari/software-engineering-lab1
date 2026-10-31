@@ -125,11 +125,20 @@ namespace lab9
 			double max = Data.Max(d => d.Value);
 			if (max <= 0) return;
 
-			int labelRoom = 34;
-			int baseY = plot.Bottom - labelRoom;
-			int usable = baseY - plot.Top - 14;
 			float slot = plot.Width / (float)Data.Count;
 			float barW = Math.Max(8f, slot - 10f);   // the 2px+ gap between bars
+
+			// Long keys are drawn on a slant, which needs more height underneath
+			// than a horizontal label; measure first so nothing is clipped.
+			bool slanted;
+			using (var probe = new Bitmap(1, 1))
+			using (var pg = Graphics.FromImage(probe))
+			{
+				slanted = Data.Any(d => pg.MeasureString(d.Key, font).Width > slot);
+			}
+			int labelRoom = slanted ? 56 : 34;
+			int baseY = plot.Bottom - labelRoom;
+			int usable = baseY - plot.Top - 14;
 
 			using var gridPen = new Pen(Grid, 1f);
 			for (int t = 1; t <= 4; t++)
@@ -162,10 +171,14 @@ namespace lab9
 				}
 				else
 				{
+					// A slanted label of width W drops W*sin(35) below the axis, so
+					// trim it to whatever the reserved room can actually hold.
+					string fit = Ellipsize(g, key, font,
+						(float)((labelRoom - 10) / Math.Sin(35.0 * Math.PI / 180.0)));
 					var state = g.Save();
 					g.TranslateTransform(x + barW / 2f, baseY + 6);
 					g.RotateTransform(35f);
-					g.DrawString(key, font, muted, 0, 0);
+					g.DrawString(fit, font, muted, 0, 0);
 					g.Restore(state);
 				}
 			}
@@ -176,9 +189,14 @@ namespace lab9
 			double max = Data.Max(d => d.Value);
 			if (max <= 0) return;
 
+			// Inset the x-extent so the first and last marker, and their labels,
+			// sit inside the frame instead of straddling it.
+			int inset = 26;
+			int left = plot.Left + inset;
+			int width = plot.Width - inset * 2;
 			int baseY = plot.Bottom - 30;
 			int usable = baseY - plot.Top - 14;
-			float step = Data.Count > 1 ? plot.Width / (float)(Data.Count - 1) : 0f;
+			float step = Data.Count > 1 ? width / (float)(Data.Count - 1) : 0f;
 
 			using var gridPen = new Pen(Grid, 1f);
 			for (int t = 1; t <= 4; t++)
@@ -192,7 +210,7 @@ namespace lab9
 			var pts = new PointF[Data.Count];
 			for (int i = 0; i < Data.Count; i++)
 			{
-				float x = Data.Count > 1 ? plot.Left + i * step : plot.Left + plot.Width / 2f;
+				float x = Data.Count > 1 ? left + i * step : left + width / 2f;
 				float y = baseY - (float)(Data[i].Value / max * usable);
 				pts[i] = new PointF(x, y);
 			}
@@ -216,6 +234,17 @@ namespace lab9
 				SizeF ks = g.MeasureString(key, font);
 				g.DrawString(key, font, muted, p.X - ks.Width / 2f, baseY + 4);
 			}
+		}
+
+		private static string Ellipsize(Graphics g, string text, Font font, float maxWidth)
+		{
+			if (g.MeasureString(text, font).Width <= maxWidth) return text;
+			for (int n = text.Length - 1; n > 1; n--)
+			{
+				string candidate = text.Substring(0, n) + "…";
+				if (g.MeasureString(candidate, font).Width <= maxWidth) return candidate;
+			}
+			return text.Substring(0, 1) + "…";
 		}
 
 		private static GraphicsPath RoundedTop(RectangleF r, float radius)
